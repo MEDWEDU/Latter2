@@ -104,6 +104,43 @@ const deleteRegistrationData = async (email: string): Promise<boolean> => {
   }
 };
 
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Регистрация нового пользователя
+ *     description: Отправляет код подтверждения на указанный email. Код действителен в течение 15 минут.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             password: "SecurePassword123!"
+ *     responses:
+ *       200:
+ *         description: Код подтверждения отправлен на email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Verification code sent to email"
+ *                 email:
+ *                   type: string
+ *                   example: "user@example.com"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       409:
+ *         $ref: '#/components/responses/Conflict'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.post(
   '/register',
   asyncHandler(async (req: Request, res: Response) => {
@@ -144,6 +181,43 @@ router.post(
   })
 );
 
+/**
+ * @swagger
+ * /api/auth/verify-email:
+ *   post:
+ *     summary: Подтверждение email адреса
+ *     description: Подтверждает email с помощью кода и создает пользователя. После успешного подтверждения возвращает токены доступа.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyEmailRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             code: "123456"
+ *     responses:
+ *       201:
+ *         description: Пользователь успешно создан и авторизован
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *             example:
+ *               message: "User created successfully"
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               user:
+ *                 id: "507f1f77bcf86cd799439011"
+ *                 email: "user@example.com"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.post(
   '/verify-email',
   asyncHandler(async (req: Request, res: Response) => {
@@ -218,6 +292,65 @@ interface LoginRequestBody {
   password?: string;
 }
 
+/**
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Вход в систему
+ *     description: Авторизует пользователя и возвращает токены доступа. Также обновляет статус пользователя на "online".
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *           example:
+ *             email: "user@example.com"
+ *             password: "SecurePassword123!"
+ *     responses:
+ *       200:
+ *         description: Успешная авторизация
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/AuthResponse'
+ *                 - type: object
+ *                   properties:
+ *                     user:
+ *                       allOf:
+ *                         - $ref: '#/components/schemas/User'
+ *                         - type: object
+ *                           properties:
+ *                             profile:
+ *                               type: object
+ *                               example:
+ *                                 position: "Senior Developer"
+ *                                 company: "TechCorp"
+ *                                 category: "IT"
+ *                                 skills: ["JavaScript", "React", "Node.js"]
+ *             example:
+ *               message: "Login successful"
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *               user:
+ *                 id: "507f1f77bcf86cd799439011"
+ *                 email: "user@example.com"
+ *                 firstName: "Иван"
+ *                 lastName: "Петров"
+ *                 profile:
+ *                   position: "Senior Developer"
+ *                   company: "TechCorp"
+ *                   category: "IT"
+ *                   skills: ["JavaScript", "React", "Node.js"]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.post(
   '/login',
   asyncHandler(async (req: Request, res: Response) => {
@@ -301,6 +434,43 @@ interface RefreshRequestBody {
   refreshToken?: string;
 }
 
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Обновление токена доступа
+ *     description: Обновляет access token с помощью refresh token. Refresh token должен быть валидным и находиться в хранилище.
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshTokenRequest'
+ *           example:
+ *             refreshToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     responses:
+ *       200:
+ *         description: Токен успешно обновлен
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Token refreshed"
+ *                 accessToken:
+ *                   type: string
+ *                   description: "Новый JWT токен доступа (действует 24 часа)"
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.post(
   '/refresh',
   asyncHandler(async (req: Request, res: Response) => {

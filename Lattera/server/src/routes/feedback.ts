@@ -50,6 +50,75 @@ interface PopulatedFeedbackRequest {
   expiresAt: Date;
 }
 
+/**
+ * @swagger
+ * /api/feedback-requests:
+ *   post:
+ *     summary: Создать запрос обратной связи
+ *     description: Создает запрос обратной связи на сообщение. Запрос действителен в течение 24 часов.
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - messageId
+ *               - responderId
+ *             properties:
+ *               messageId:
+ *                 type: string
+ *                 description: ID сообщения для обратной связи
+ *                 example: "507f1f77bcf86cd799439015"
+ *               responderId:
+ *                 type: string
+ *                 description: ID пользователя, которому направляется запрос
+ *                 example: "507f1f77bcf86cd799439012"
+ *           example:
+ *             messageId: "507f1f77bcf86cd799439015"
+ *             responderId: "507f1f77bcf86cd799439012"
+ *     responses:
+ *       201:
+ *         description: Запрос обратной связи успешно создан
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Feedback'
+ *             example:
+ *               id: "507f1f77bcf86cd799439016"
+ *               userId: "507f1f77bcf86cd799439011"
+ *               messageId: "507f1f77bcf86cd799439015"
+ *               responderId: "507f1f77bcf86cd799439012"
+ *               chatId: "507f1f77bcf86cd799439013"
+ *               status: "pending"
+ *               requestedAt: "2024-01-15T10:30:00.000Z"
+ *               expiresAt: "2024-01-16T10:30:00.000Z"
+ *               message: "Feedback request created successfully"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Запрос на обратную связь уже существует
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: 'FEEDBACK_REQUEST_EXISTS',
+ *                 message: 'A feedback request for this message already exists',
+ *                 details: []
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // POST /api/feedback-requests - Create a new feedback request
 router.post(
   '/',
@@ -187,6 +256,66 @@ router.post(
   })
 );
 
+/**
+ * @swagger
+ * /api/feedback-requests:
+ *   get:
+ *     summary: Получить активные запросы обратной связи
+ *     description: Возвращает список активных запросов обратной связи для текущего пользователя с пагинацией и фильтрацией по статусу.
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, responded, expired]
+ *         description: Фильтр по статусу запроса
+ *         example: "pending"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Максимальное количество результатов (1-100)
+ *         example: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Смещение для пагинации
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Список запросов обратной связи
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/FeedbackListResponse'
+ *             example:
+ *               message: "Feedback requests retrieved"
+ *               feedbackRequests:
+ *                 - id: "507f1f77bcf86cd799439016"
+ *                   messageId: "507f1f77bcf86cd799439015"
+ *                   requesterId: "507f1f77bcf86cd799439011"
+ *                   responderId: "507f1f77bcf86cd799439012"
+ *                   chatId: "507f1f77bcf86cd799439013"
+ *                   status: "pending"
+ *                   requestedAt: "2024-01-15T10:30:00.000Z"
+ *                   expiresAt: "2024-01-16T10:30:00.000Z"
+ *               total: 1
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/feedback-requests - Get active feedback requests for current user
 router.get(
   '/',
@@ -310,6 +439,63 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/feedback-requests/{id}:
+ *   get:
+ *     summary: Получить детали запроса обратной связи
+ *     description: Возвращает подробную информацию о конкретном запросе обратной связи.
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID запроса обратной связи
+ *         example: "507f1f77bcf86cd799439016"
+ *     responses:
+ *       200:
+ *         description: Детали запроса обратной связи
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Feedback'
+ *             example:
+ *               id: "507f1f77bcf86cd799439016"
+ *               messageId: "507f1f77bcf86cd799439015"
+ *               requesterId: "507f1f77bcf86cd799439011"
+ *               responderId: "507f1f77bcf86cd799439012"
+ *               chatId: "507f1f77bcf86cd799439013"
+ *               status: "pending"
+ *               requestedAt: "2024-01-15T10:30:00.000Z"
+ *               expiresAt: "2024-01-16T10:30:00.000Z"
+ *               message:
+ *                 id: "507f1f77bcf86cd799439015"
+ *                 content: "Привет! Как дела?"
+ *                 senderId: "507f1f77bcf86cd799439011"
+ *                 timestamp: "2024-01-15T10:30:00.000Z"
+ *               requester:
+ *                 id: "507f1f77bcf86cd799439011"
+ *                 firstName: "Иван"
+ *                 lastName: "Петров"
+ *               responder:
+ *                 id: "507f1f77bcf86cd799439012"
+ *                 firstName: "Анна"
+ *                 lastName: "Смирнова"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/feedback-requests/:id - Get specific feedback request
 router.get(
   '/:id',
@@ -390,6 +576,55 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/feedback-requests/{id}:
+ *   patch:
+ *     summary: Обновить статус запроса обратной связи
+ *     description: Обновляет статус запроса обратной связи. Только получатель запроса может изменить статус.
+ *     tags: [Feedback]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID запроса обратной связи
+ *         example: "507f1f77bcf86cd799439016"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateFeedbackRequest'
+ *           example:
+ *             status: "responded"
+ *     responses:
+ *       200:
+ *         description: Статус запроса обратной связи успешно обновлен
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Feedback request status updated"
+ *                 data:
+ *                   $ref: '#/components/schemas/Feedback'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // PATCH /api/feedback-requests/:id - Update feedback request status
 router.patch(
   '/:id',

@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import swaggerUI from 'swagger-ui-express';
 import { Server as SocketIOServer } from 'socket.io';
 import healthRouter from './routes/health';
 import mediaRouter from './routes/media';
@@ -10,6 +11,7 @@ import usersRouter from './routes/users';
 import chatsRouter from './routes/chats';
 import messagesRouter from './routes/messages';
 import feedbackRouter from './routes/feedback';
+import { swaggerSpec } from './swagger/swaggerConfig';
 import {
   connectDB,
   createIndexes,
@@ -40,6 +42,19 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Swagger UI
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Lettera API Documentation',
+  swaggerOptions: {
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    showExtensions: true,
+    showCommonExtensions: true,
+  },
+}));
 
 // Routes
 app.use('/api/health', healthRouter);

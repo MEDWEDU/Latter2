@@ -40,6 +40,81 @@ const getUnreadCount = (
   return (unreadCount as Record<string, number>)[userId] || 0;
 };
 
+/**
+ * @swagger
+ * /api/chats:
+ *   post:
+ *     summary: Создать новый чат
+ *     description: Создает приватный чат между текущим пользователем и указанным пользователем. Если чат уже существует, возвращает существующий чат.
+ *     tags: [Chats]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateChatRequest'
+ *           example:
+ *             participantIds: ["507f1f77bcf86cd799439012"]
+ *     responses:
+ *       201:
+ *         description: Чат успешно создан
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Chat created successfully"
+ *                 chat:
+ *                   $ref: '#/components/schemas/Chat'
+ *             example:
+ *               message: "Chat created successfully"
+ *               chat:
+ *                 id: "507f1f77bcf86cd799439013"
+ *                 type: "private"
+ *                 participants:
+ *                   - id: "507f1f77bcf86cd799439011"
+ *                     firstName: "Иван"
+ *                     lastName: "Петров"
+ *                     profile:
+ *                       position: "Senior Developer"
+ *                       company: "TechCorp"
+ *                     unreadCount: 0
+ *                   - id: "507f1f77bcf86cd799439012"
+ *                     firstName: "Анна"
+ *                     lastName: "Смирнова"
+ *                     profile:
+ *                       position: "UI/UX Designer"
+ *                       company: "DesignStudio"
+ *                     unreadCount: 0
+ *                 lastMessage: null
+ *                 unreadCount:
+ *                   "507f1f77bcf86cd799439011": 0
+ *                   "507f1f77bcf86cd799439012": 0
+ *       200:
+ *         description: Чат уже существует
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Chat already exists"
+ *                 chat:
+ *                   $ref: '#/components/schemas/Chat'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // POST /api/chats - Create a new chat
 router.post(
   '/',
@@ -203,6 +278,71 @@ router.post(
 );
 
 // GET /api/chats - Get all user's chats
+/**
+ * @swagger
+ * /api/chats:
+ *   get:
+ *     summary: Получить список чатов пользователя
+ *     description: Возвращает список всех чатов текущего пользователя с пагинацией. Сортируется по времени последнего сообщения.
+ *     tags: [Chats]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Максимальное количество результатов (1-100)
+ *         example: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Смещение для пагинации
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Список чатов
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ChatListResponse'
+ *             example:
+ *               message: "Chats retrieved"
+ *               total: 15
+ *               count: 10
+ *               limit: 10
+ *               offset: 0
+ *               chats:
+ *                 - id: "507f1f77bcf86cd799439013"
+ *                   type: "private"
+ *                   participants:
+ *                     - id: "507f1f77bcf86cd799439012"
+ *                       firstName: "Анна"
+ *                       lastName: "Смирнова"
+ *                       profile:
+ *                         position: "UI/UX Designer"
+ *                         company: "DesignStudio"
+ *                     unreadCount: 3
+ *                   lastMessage:
+ *                     content: "Привет! Как дела?"
+ *                     senderId: "507f1f77bcf86cd799439012"
+ *                     timestamp: "2024-01-15T10:30:00.000Z"
+ *                   unreadCount:
+ *                     "507f1f77bcf86cd799439011": 3
+ *                     "507f1f77bcf86cd799439012": 0
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.get(
   '/',
   authMiddleware,
@@ -323,6 +463,78 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/chats/{chatId}:
+ *   get:
+ *     summary: Получить детали чата
+ *     description: Возвращает подробную информацию о чате. Доступно только участникам чата.
+ *     tags: [Chats]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID чата
+ *         example: "507f1f77bcf86cd799439013"
+ *     responses:
+ *       200:
+ *         description: Детали чата
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Chat retrieved"
+ *                 chat:
+ *                   $ref: '#/components/schemas/Chat'
+ *             example:
+ *               message: "Chat retrieved"
+ *               chat:
+ *                 id: "507f1f77bcf86cd799439013"
+ *                 type: "private"
+ *                 participants:
+ *                   - id: "507f1f77bcf86cd799439011"
+ *                     firstName: "Иван"
+ *                     lastName: "Петров"
+ *                     avatarUrl: "https://s3.amazonaws.com/lettera/avatars/ivan123.jpg"
+ *                     profile:
+ *                       position: "Senior Developer"
+ *                       company: "TechCorp"
+ *                       category: "IT"
+ *                     unreadCount: 0
+ *                   - id: "507f1f77bcf86cd799439012"
+ *                     firstName: "Анна"
+ *                     lastName: "Смирнова"
+ *                     avatarUrl: "https://s3.amazonaws.com/lettera/avatars/anna123.jpg"
+ *                     profile:
+ *                       position: "UI/UX Designer"
+ *                       company: "DesignStudio"
+ *                       category: "Design"
+ *                     unreadCount: 2
+ *                 lastMessage:
+ *                   content: "Привет! Как дела?"
+ *                   senderId: "507f1f77bcf86cd799439012"
+ *                   timestamp: "2024-01-15T10:30:00.000Z"
+ *                 unreadCount:
+ *                   "507f1f77bcf86cd799439011": 2
+ *                   "507f1f77bcf86cd799439012": 0
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/chats/:chatId - Get specific chat details
 router.get(
   '/:chatId',

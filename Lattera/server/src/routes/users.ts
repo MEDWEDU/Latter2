@@ -86,6 +86,95 @@ const parseIntParam = (
   return parsed;
 };
 
+/**
+ * @swagger
+ * /api/users/search:
+ *   get:
+ *     summary: Поиск пользователей
+ *     description: Поиск пользователей по категории, компании, навыкам и текстовому запросу. Поддерживает пагинацию и текстовый поиск.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *           enum: [IT, Marketing, Design, Finance, Other]
+ *         description: Фильтр по категории профиля
+ *         example: "IT"
+ *       - in: query
+ *         name: company
+ *         schema:
+ *           type: string
+ *         description: Фильтр по компании (частичное совпадение, без учета регистра)
+ *         example: "TechCorp"
+ *       - in: query
+ *         name: skills
+ *         schema:
+ *           type: string
+ *         description: Фильтр по навыкам (через запятую, максимум 10 навыков)
+ *         example: "JavaScript,React"
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Текстовый поиск по имени, фамилии, должности и компании
+ *         example: "developer"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Максимальное количество результатов (1-100)
+ *         example: 20
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Смещение для пагинации
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Список найденных пользователей
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SearchUsersResponse'
+ *             example:
+ *               message: "Users found"
+ *               total: 42
+ *               count: 20
+ *               limit: 20
+ *               offset: 0
+ *               users:
+ *                 - id: "507f1f77bcf86cd799439011"
+ *                   firstName: "Иван"
+ *                   lastName: "Петров"
+ *                   profile:
+ *                     position: "Senior Developer"
+ *                     company: "TechCorp"
+ *                     category: "IT"
+ *                     skills: ["JavaScript", "React", "Node.js"]
+ *                 - id: "507f1f77bcf86cd799439012"
+ *                   firstName: "Анна"
+ *                   lastName: "Смирнова"
+ *                   profile:
+ *                     position: "UI/UX Designer"
+ *                     company: "DesignStudio"
+ *                     category: "Design"
+ *                     skills: ["Figma", "Photoshop", "Sketch"]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/users/search - Search users
 router.get(
   '/search',
@@ -263,6 +352,55 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/users/me/password:
+ *   patch:
+ *     summary: Смена пароля
+ *     description: Смена пароля текущего пользователя. При смене пароля все существующие refresh токены становятся недействительными, кроме текущей сессии.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PasswordChangeRequest'
+ *           example:
+ *             oldPassword: "OldPassword123!"
+ *             newPassword: "NewSecurePassword123!"
+ *     responses:
+ *       200:
+ *         description: Пароль успешно изменен
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Password changed successfully"
+ *                 accessToken:
+ *                   type: string
+ *                   description: "Новый JWT токен доступа"
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 refreshToken:
+ *                   type: string
+ *                   description: "Новый refresh токен"
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 info:
+ *                   type: string
+ *                   example: "Other sessions have been logged out"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // PATCH /api/users/me/password - Change password
 router.patch(
   '/me/password',
@@ -330,6 +468,42 @@ router.patch(
   })
 );
 
+/**
+ * @swagger
+ * /api/users/me:
+ *   get:
+ *     summary: Получить профиль текущего пользователя
+ *     description: Возвращает информацию о текущем аутентифицированном пользователе.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Профиль пользователя
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *             example:
+ *               id: "507f1f77bcf86cd799439011"
+ *               email: "user@example.com"
+ *               firstName: "Иван"
+ *               lastName: "Петров"
+ *               avatarUrl: "https://s3.amazonaws.com/lettera/avatars/user123.jpg"
+ *               profile:
+ *                 position: "Senior Developer"
+ *                 company: "TechCorp"
+ *                 category: "IT"
+ *                 skills: ["JavaScript", "React", "Node.js"]
+ *               createdAt: "2024-01-15T10:30:00.000Z"
+ *               updatedAt: "2024-01-15T10:30:00.000Z"
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/users/me - Get current user profile
 router.get(
   '/me',
@@ -359,6 +533,100 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/users/me:
+ *   patch:
+ *     summary: Обновить профиль пользователя
+ *     description: Обновляет информацию профиля текущего пользователя. Обновляются только переданные поля.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 maxLength: 50
+ *                 description: Имя пользователя
+ *                 example: "Иван"
+ *               lastName:
+ *                 type: string
+ *                 maxLength: 50
+ *                 description: Фамилия пользователя
+ *                 example: "Петров"
+ *               profile:
+ *                 type: object
+ *                 properties:
+ *                   position:
+ *                     type: string
+ *                     maxLength: 100
+ *                     description: Должность
+ *                     example: "Senior Developer"
+ *                   company:
+ *                     type: string
+ *                     maxLength: 100
+ *                     description: Компания
+ *                     example: "TechCorp"
+ *                   category:
+ *                     type: string
+ *                     enum: [IT, Marketing, Design, Finance, Other]
+ *                     description: Категория профиля
+ *                     example: "IT"
+ *                   skills:
+ *                     type: array
+ *                     maxItems: 10
+ *                     items:
+ *                       type: string
+ *                       maxLength: 50
+ *                     description: Навыки пользователя
+ *                     example: ["JavaScript", "React", "Node.js"]
+ *           example:
+ *             firstName: "Иван"
+ *             lastName: "Петров"
+ *             profile:
+ *               position: "Senior Developer"
+ *               company: "TechCorp"
+ *               category: "IT"
+ *               skills: ["JavaScript", "React", "Node.js"]
+ *     responses:
+ *       200:
+ *         description: Профиль успешно обновлен
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *             example:
+ *               message: "Profile updated successfully"
+ *               user:
+ *                 id: "507f1f77bcf86cd799439011"
+ *                 email: "user@example.com"
+ *                 firstName: "Иван"
+ *                 lastName: "Петров"
+ *                 profile:
+ *                   position: "Senior Developer"
+ *                   company: "TechCorp"
+ *                   category: "IT"
+ *                   skills: ["JavaScript", "React", "Node.js"]
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // PATCH /api/users/me - Update user profile
 router.patch(
   '/me',
