@@ -34,6 +34,98 @@ interface PopulatedSender {
   lastName: string;
 }
 
+/**
+ * @swagger
+ * /api/messages:
+ *   post:
+ *     summary: Отправить сообщение
+ *     description: Отправляет новое сообщение в чат. Поддерживает текстовые сообщения и медиа (изображения, аудио, видео).
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - chatId
+ *             properties:
+ *               chatId:
+ *                 type: string
+ *                 description: ID чата
+ *                 example: "507f1f77bcf86cd799439013"
+ *               content:
+ *                 type: string
+ *                 maxLength: 5000
+ *                 description: Текст сообщения
+ *                 example: "Привет! Как дела?"
+ *               media:
+ *                 type: object
+ *                 properties:
+ *                   type:
+ *                     type: string
+ *                     enum: [image, audio, video]
+ *                     description: Тип медиафайла
+ *                     example: "image"
+ *                   url:
+ *                     type: string
+ *                     description: URL медиафайла
+ *                     example: "https://s3.amazonaws.com/lettera/uploads/image.jpg"
+ *                   metadata:
+ *                     type: object
+ *                     properties:
+ *                       duration:
+ *                         type: number
+ *                         description: Длительность для аудио/видео (в секундах)
+ *                       width:
+ *                         type: number
+ *                         description: Ширина для изображений/видео
+ *                       height:
+ *                         type: number
+ *                         description: Высота для изображений/видео
+ *           examples:
+ *             textMessage:
+ *               summary: Текстовое сообщение
+ *               value:
+ *                 chatId: "507f1f77bcf86cd799439013"
+ *                 content: "Привет! Как дела?"
+ *             mediaMessage:
+ *               summary: Сообщение с изображением
+ *               value:
+ *                 chatId: "507f1f77bcf86cd799439013"
+ *                 content: "Посмотри на это фото!"
+ *                 media:
+ *                   type: "image"
+ *                   url: "https://s3.amazonaws.com/lettera/uploads/photo.jpg"
+ *                   metadata:
+ *                     width: 1920
+ *                     height: 1080
+ *     responses:
+ *       201:
+ *         description: Сообщение успешно отправлено
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Message sent"
+ *                 data:
+ *                   $ref: '#/components/schemas/Message'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // POST /api/messages - Create a new message
 router.post(
   '/',
@@ -145,6 +237,72 @@ router.post(
   })
 );
 
+/**
+ * @swagger
+ * /api/messages:
+ *   get:
+ *     summary: Получить историю сообщений
+ *     description: Возвращает список сообщений чата с пагинацией. Сортируется от новых к старым.
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: chatId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID чата
+ *         example: "507f1f77bcf86cd799439013"
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 50
+ *         description: Максимальное количество сообщений (1-100)
+ *         example: 50
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           default: 0
+ *         description: Смещение для пагинации
+ *         example: 0
+ *     responses:
+ *       200:
+ *         description: Список сообщений
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MessageListResponse'
+ *             example:
+ *               message: "Messages retrieved"
+ *               messages:
+ *                 - id: "507f1f77bcf86cd799439015"
+ *                   chatId: "507f1f77bcf86cd799439013"
+ *                   senderId: "507f1f77bcf86cd799439012"
+ *                   content: "Привет! Как дела?"
+ *                   mediaFiles: []
+ *                   edited: false
+ *                   deletedForAll: false
+ *                   createdAt: "2024-01-15T10:30:00.000Z"
+ *                   updatedAt: "2024-01-15T10:30:00.000Z"
+ *               total: 156
+ *               hasMore: true
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // GET /api/messages?chatId=...&limit=50&offset=0 - Get messages
 router.get(
   '/',
@@ -259,6 +417,66 @@ router.get(
   })
 );
 
+/**
+ * @swagger
+ * /api/messages/{messageId}:
+ *   patch:
+ *     summary: Редактировать сообщение
+ *     description: Редактирует сообщение. Можно редактировать только свои сообщения в течение 15 минут после отправки.
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID сообщения
+ *         example: "507f1f77bcf86cd799439015"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateMessageRequest'
+ *           example:
+ *             content: "Привет! Как дела? 😊"
+ *     responses:
+ *       200:
+ *         description: Сообщение успешно отредактировано
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Message updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Message'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Сообщение слишком старое для редактирования
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: 'TOO_LATE_TO_EDIT',
+ *                 message: 'Messages can only be edited within 15 minutes of sending',
+ *                 details: []
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // PATCH /api/messages/:messageId - Edit a message
 router.patch(
   '/:messageId',
@@ -343,6 +561,61 @@ router.patch(
   })
 );
 
+/**
+ * @swagger
+ * /api/messages/{messageId}:
+ *   delete:
+ *     summary: Удалить сообщение
+ *     description: Удаляет сообщение. Можно удалить только свое сообщение. Если forAll=true, удаляется для всех участников чата в течение 24 часов после отправки.
+ *     tags: [Messages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID сообщения
+ *         example: "507f1f77bcf86cd799439015"
+ *       - in: query
+ *         name: forAll
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Удалить сообщение для всех участников чата (только в течение 24 часов)
+ *         example: true
+ *     responses:
+ *       200:
+ *         description: Сообщение успешно удалено
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ApiResponse'
+ *             example:
+ *               message: "Message deleted successfully"
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       409:
+ *         description: Время для удаления для всех истекло
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               error:
+ *                 code: 'TOO_LATE_TO_DELETE_FOR_ALL',
+ *                 message: 'Messages can only be deleted for all participants within 24 hours of sending',
+ *                 details: []
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // DELETE /api/messages/:messageId?forAll=false - Delete a message
 router.delete(
   '/:messageId',
