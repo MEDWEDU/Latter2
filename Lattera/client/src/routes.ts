@@ -9,6 +9,7 @@ export type Route =
 export interface RouteData {
   email?: string;
   password?: string;
+  chatId?: string;
 }
 
 export type NavigateFn = (path: Route, data?: RouteData) => void;
